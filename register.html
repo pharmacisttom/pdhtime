@@ -78,14 +78,18 @@
                 department: department, username: username, password: password
             };
 
-            fetch(WEB_APP_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-            .then(res => res.json())
+            fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(payload) })
+            .then(res => {
+                if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + res.statusText);
+                return res.json();
+            })
             .then(data => {
                 alert(data.message);
                 if(data.status === 'success') window.location.href = 'login.html';
                 btn.disabled = false; btn.innerHTML = 'บันทึกข้อมูลลงทะเบียน';
             }).catch(err => {
-                alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+                console.error('Register Error:', err);
+                alert('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err.message);
                 btn.disabled = false; btn.innerHTML = 'บันทึกข้อมูลลงทะเบียน';
             });
         });
