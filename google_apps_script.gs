@@ -4,8 +4,28 @@
 
 function doPost(e) {
   try {
-    var content = e.postData.contents;
-    var data = JSON.parse(content);
+    var content = (e.postData && e.postData.contents) || '';
+    var contentType = (e.postData && e.postData.type) || '';
+    var data = {};
+
+    if (contentType.indexOf('application/json') !== -1) {
+      data = JSON.parse(content);
+    } else if (contentType.indexOf('application/x-www-form-urlencoded') !== -1) {
+      var params = {};
+      content.split('&').forEach(function(pair) {
+        var kv = pair.split('=');
+        var k = decodeURIComponent(kv[0] || '');
+        var v = decodeURIComponent(kv[1] || '');
+        params[k] = v;
+      });
+      if (params.payload) {
+        data = JSON.parse(params.payload);
+      } else {
+        data = params;
+      }
+    } else {
+      try { data = JSON.parse(content); } catch (err) { data = {}; }
+    }
 
     var ss = SpreadsheetApp.openById('YOUR_SHEET_ID'); // << เปลี่ยนตรงนี้
     var users = ss.getSheetByName('users') || ss.insertSheet('users');

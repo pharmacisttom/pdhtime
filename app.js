@@ -137,11 +137,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             photo: photoBase64
         };
 
-        fetch(WEB_APP_URL, {
-            method: 'POST',
-            body: JSON.stringify(payload)
+        const form = new URLSearchParams();
+        form.append('payload', JSON.stringify(payload));
+        fetch(WEB_APP_URL, { method: 'POST', body: form })
+        .then(response => {
+            if (!response.ok) throw new Error('HTTP ' + response.status + ' ' + response.statusText);
+            return response.json();
         })
-        .then(response => response.json())
         .then(data => {
             alert(data.message);
             statusContainer.className = "alert alert-success py-2 mb-3";
