@@ -8,9 +8,13 @@ function doPost(e) {
     var contentType = (e.postData && e.postData.type) || '';
     var data = {};
 
+    // Log incoming data for debugging
+    Logger.log('Content-Type: ' + contentType);
+    Logger.log('Raw content: ' + content);
+
     if (contentType.indexOf('application/json') !== -1) {
       data = JSON.parse(content);
-    } else if (contentType.indexOf('application/x-www-form-urlencoded') !== -1) {
+    } else if (contentType.indexOf('application/x-www-form-urlencoded') !== -1 || content.indexOf('payload=') === 0) {
       var params = {};
       content.split('&').forEach(function(pair) {
         var kv = pair.split('=');
@@ -18,6 +22,7 @@ function doPost(e) {
         var v = decodeURIComponent(kv[1] || '');
         params[k] = v;
       });
+      Logger.log('Parsed params: ' + JSON.stringify(params));
       if (params.payload) {
         data = JSON.parse(params.payload);
       } else {
@@ -27,11 +32,14 @@ function doPost(e) {
       try { data = JSON.parse(content); } catch (err) { data = {}; }
     }
 
+    Logger.log('Parsed data: ' + JSON.stringify(data));
+
     var ss = SpreadsheetApp.openById('YOUR_SHEET_ID'); // << เปลี่ยนตรงนี้
-    var users = ss.getSheetByName('users') || ss.insertSheet('users');
-    var logs = ss.getSheetByName('logs') || ss.insertSheet('logs');
+    var users = ss.getSheetByName('users') || ss.getSheetByName('Users') || ss.insertSheet('users');
+    var logs = ss.getSheetByName('logs') || ss.getSheetByName('Logs') || ss.insertSheet('logs');
 
     if (data.requestType === 'register') {
+      Logger.log('Processing register request');
       users.appendRow([
         new Date(),
         data.idCard || '',
@@ -40,10 +48,12 @@ function doPost(e) {
         data.department || '',
         data.username || ''
       ]);
+      Logger.log('Registered user: ' + data.idCard);
       return jsonResponse({ status: 'success', message: 'ลงทะเบียนเรียบร้อย' });
     }
 
     if (data.requestType === 'checkin') {
+      Logger.log('Processing checkin request');
       var photoUrl = '';
       if (data.photo && data.photo.indexOf('data:') === 0) {
         try {
