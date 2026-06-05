@@ -56,7 +56,7 @@
     </div>
 
     <script>
-        const WEB_APP_URL = 'ใส่_URL_ของ_GOOGLE_APPS_SCRIPT_ที่นี่'; // << แก้ไขตรงนี้
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyxwG1-WHwGFNWC3sWia7GYSCgGC43hxDY_fFkWhNZtSYEdFH1URBVGYPZTQOr_1JNzrg/exec'; // ใช้ URL เดียวกับ app.js
 
         document.getElementById('btn-register').addEventListener('click', function() {
             const idCard = document.getElementById('regIdCard').value.trim();
@@ -78,7 +78,7 @@
                 department: department, username: username, password: password
             };
 
-            fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(payload) })
+            fetch(WEB_APP_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
             .then(res => res.json())
             .then(data => {
                 alert(data.message);
