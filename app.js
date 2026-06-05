@@ -1,102 +1,164 @@
-// --- ตั้งค่าระบบ ---
-const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyxwG1-WHwGFNWC3sWia7GYSCgGC43hxDY_fFkWhNZtSYEdFH1URBVGYPZTQOr_1JNzrg/exec';
-const HOSPITAL_LAT = 12.9699764; // แก้ไขเป็นพิกัดโรงพยาบาลของคุณ
-const HOSPITAL_LNG = 101.2189753; // แก้ไขเป็นพิกัดโรงพยาบาลของคุณ
-const MAX_DISTANCE = 20; // ระยะที่อนุญาต (เมตร)
 
-const video = document.getElementById('camera-preview');
-const canvas = document.getElementById('canvas');
-const statusText = document.getElementById('status-text');
-const btnCheckIn = document.getElementById('btn-checkin');
-const btnCheckOut = document.getElementById('btn-checkout');
+// --- 1. ตรวจสอบการ Login ทันที ---
+const storedUser = localStorage.getItem('pdhtime_user');
+let userData = null;
 
-let userLat, userLng, currentDistance;
+if (!storedUser) {
+    window.location.href = 'login.html'; // เด้งไปหน้าล็อกอินถ้าไม่มี Session
+} else {
+    userData = JSON.parse(storedUser);
+}
 
-// 1. เปิดกล้องมือถือ
-navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-    .then(stream => { video.srcObject = stream; })
-    .catch(err => { alert("ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตการเข้าถึงกล้อง"); });
+// ฟังก์ชันออกจากระบบ
+function logout() {
+    localStorage.removeItem('pdhtime_user');
+    window.location.href = 'login.html';
+}
 
-// 2. ตรวจสอบพิกัด GPS
-navigator.geolocation.getCurrentPosition(position => {
-    userLat = position.coords.latitude;
-    userLng = position.coords.longitude;
-    currentDistance = calculateDistance(HOSPITAL_LAT, HOSPITAL_LNG, userLat, userLng);
-    
-    if (currentDistance <= MAX_DISTANCE) {
-        statusText.innerHTML = `<span class="text-success">พิกัดถูกต้อง (ห่าง ${currentDistance.toFixed(0)} เมตร)</span>`;
-        btnCheckIn.disabled = false;
-        btnCheckOut.disabled = false;
-    } else {
-        statusText.innerHTML = `<span class="text-danger">อยู่นอกพื้นที่โรงพยาบาล (ห่าง ${currentDistance.toFixed(0)} เมตร)</span>`;
+// --- 2. การตั้งค่าระบบ (แก้ URL และพิกัดตรงนี้) ---
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyxwG1-WHwGFNWC3sWia7GYSCgGC43hxDY_fFkWhNZtSYEdFH1URBVGYPZTQOr_1JNzrg/exec'; // << แก้ไขตรงนี้
+const HOSPITAL_LAT = 12.9699764; // พิกัด รพ.ปลวกแดง
+const HOSPITAL_LNG = 101.2189753;
+const MAX_DISTANCE = 50; // รัศมี 50 เมตร
+
+// ตัวแปรส่วน Global
+let userLat = null;
+let userLng = null;
+let currentDistance = null;
+let streamRef = null;
+
+// รอให้ HTML โหลดเสร็จก่อนเริ่มทำงาน
+document.addEventListener('DOMContentLoaded', async () => {
+    // นำข้อมูลผู้ใช้มาแสดง
+    document.getElementById('displayEmpId').innerText = userData.idCard;
+    document.getElementById('displayEmpName').innerText = userData.name;
+
+    const video = document.getElementById('camera-preview');
+    const statusText = document.getElementById('status-text');
+    const statusContainer = document.getElementById('status-container');
+    const btnCheckIn = document.getElementById('btn-checkin');
+    const btnCheckOut = document.getElementById('btn-checkout');
+
+    // --- 3. ฟังก์ชันเปิดกล้อง (ปรับปรุงใหม่เพื่อลด Error) ---
+    async function startCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "user" }, // บังคับใช้กล้องหน้า
+                audio: false 
+            });
+            video.srcObject = stream;
+            streamRef = stream;
+        } catch (err) {
+            console.error("Camera Error: ", err);
+            statusContainer.className = "alert alert-danger py-2 mb-3";
+            statusText.innerText = "ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตสิทธิ์";
+        }
     }
-}, error => {
-    statusText.innerHTML = `<span class="text-danger">ไม่สามารถดึงพิกัด GPS ได้</span>`;
+
+    // --- 4. ฟังก์ชันจัดการ GPS ---
+    function checkGPS() {
+        if (!navigator.geolocation) {
+            statusText.innerText = "อุปกรณ์ของคุณไม่รองรับ GPS";
+            return;
+        }
+
+        navigator.geolocation.watchPosition(position => {
+            userLat = position.coords.latitude;
+            userLng = position.coords.longitude;
+            currentDistance = calculateDistance(HOSPITAL_LAT, HOSPITAL_LNG, userLat, userLng);
+            
+            if (currentDistance <= MAX_DISTANCE) {
+                statusContainer.className = "alert alert-success py-2 mb-3";
+                statusText.innerHTML = `พิกัดถูกต้อง (ห่าง ${currentDistance.toFixed(0)} เมตร)`;
+                btnCheckIn.disabled = false;
+                btnCheckOut.disabled = false;
+            } else {
+                statusContainer.className = "alert alert-danger py-2 mb-3";
+                statusText.innerHTML = `อยู่นอกพื้นที่ (ห่าง ${currentDistance.toFixed(0)} เมตร)`;
+                btnCheckIn.disabled = true;
+                btnCheckOut.disabled = true;
+            }
+        }, error => {
+            console.error("GPS Error: ", error);
+            statusContainer.className = "alert alert-danger py-2 mb-3";
+            statusText.innerText = "ไม่สามารถค้นหาตำแหน่ง GPS ได้";
+        }, {
+            enableHighAccuracy: true, // บังคับใช้ GPS ความแม่นยำสูง
+            timeout: 10000,
+            maximumAge: 0
+        });
+    }
+
+    // เริ่มทำงาน กล้อง และ GPS
+    await startCamera();
+    checkGPS();
+
+    // --- 5. สูตรคำนวณระยะทาง ---
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3;
+        const p1 = lat1 * Math.PI/180;
+        const p2 = lat2 * Math.PI/180;
+        const dp = (lat2-lat1) * Math.PI/180;
+        const dl = (lon2-lon1) * Math.PI/180;
+        const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    }
+
+    // --- 6. ฟังก์ชันถ่ายภาพและส่งข้อมูลเข้า Google Sheets ---
+    function recordTime(actionType) {
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        
+        // ถ่ายรูป
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        // พลิกภาพกลับมาให้ถูกต้องก่อนบันทึก (เพราะเราทำ Mirror ไว้ใน CSS)
+        context.translate(canvas.width, 0);
+        context.scale(-1, 1);
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const photoBase64 = canvas.toDataURL('image/jpeg', 0.6); // บีบอัดภาพ 60%
+
+        // ล็อคปุ่ม
+        btnCheckIn.disabled = true;
+        btnCheckOut.disabled = true;
+        statusContainer.className = "alert alert-primary py-2 mb-3";
+        statusText.innerText = 'กำลังส่งข้อมูล...';
+
+        const payload = {
+            requestType: 'checkin',
+            empId: userData.idCard,
+            name: userData.name,
+            action: actionType,
+            lat: userLat,
+            lng: userLng,
+            distance: currentDistance,
+            photo: photoBase64
+        };
+
+        fetch(WEB_APP_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            statusContainer.className = "alert alert-success py-2 mb-3";
+            statusText.innerText = 'บันทึกเรียบร้อย';
+            setTimeout(() => location.reload(), 2000);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("เกิดข้อผิดพลาดในการบันทึก");
+            btnCheckIn.disabled = false;
+            btnCheckOut.disabled = false;
+            statusContainer.className = "alert alert-warning py-2 mb-3";
+            statusText.innerText = 'ระบบพร้อมใช้งาน';
+        });
+    }
+
+    // ผูก Event ปุ่มกด
+    btnCheckIn.addEventListener('click', () => recordTime('Check-In'));
+    btnCheckOut.addEventListener('click', () => recordTime('Check-Out'));
 });
-
-// สูตรคำนวณระยะทาง Haversine
-function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371e3; // รัศมีโลก (เมตร)
-    const p1 = lat1 * Math.PI/180;
-    const p2 = lat2 * Math.PI/180;
-    const dp = (lat2-lat1) * Math.PI/180;
-    const dl = (lon2-lon1) * Math.PI/180;
-    const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-}
-
-// 3. ฟังก์ชันถ่ายรูปและส่งข้อมูล
-function recordTime(actionType) {
-    const empId = document.getElementById('empId').value;
-    const name = document.getElementById('empName').value;
-
-    if(!empId || !name) {
-        alert("กรุณาระบุรหัสและชื่อเจ้าหน้าที่");
-        return;
-    }
-
-    // ถ่ายรูป
-    const context = canvas.getContext('2d');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const photoBase64 = canvas.toDataURL('image/jpeg', 0.5); // บีบอัดภาพ 50%
-
-    // ปิดปุ่มระหว่างส่งข้อมูล
-    btnCheckIn.disabled = true;
-    btnCheckOut.disabled = true;
-    statusText.innerHTML = '<span class="text-primary">กำลังบันทึกข้อมูล...</span>';
-
-    // ส่งข้อมูลผ่าน AJAX (Fetch)
-    const payload = {
-        empId: empId,
-        name: name,
-        action: actionType,
-        lat: userLat,
-        lng: userLng,
-        distance: currentDistance,
-        photo: photoBase64
-    };
-
-    fetch(WEB_APP_URL, {
-        method: 'POST',
-        body: JSON.stringify(payload)
-    })
-    .then(response => response.json())
-    .then(data => {
-        alert(data.message);
-        statusText.innerHTML = '<span class="text-success">บันทึกเรียบร้อย</span>';
-        setTimeout(() => location.reload(), 2000); // รีเฟรชหน้า
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert("เกิดข้อผิดพลาดในการบันทึก");
-        btnCheckIn.disabled = false;
-        btnCheckOut.disabled = false;
-    });
-}
-
-// ผูก Event กับปุ่ม
-btnCheckIn.addEventListener('click', () => recordTime('Check-In'));
-btnCheckOut.addEventListener('click', () => recordTime('Check-Out'));
