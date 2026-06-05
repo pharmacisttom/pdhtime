@@ -31,7 +31,7 @@
         // ถ้า Login แล้วให้เด้งไปหน้า index เลย
         if (localStorage.getItem('pdhtime_user')) { window.location.href = 'index.html'; }
 
-        const WEB_APP_URL = 'ใส่_URL_ของ_GOOGLE_APPS_SCRIPT_ที่นี่'; // << แก้ไขตรงนี้
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyxwG1-WHwGFNWC3sWia7GYSCgGC43hxDY_fFkWhNZtSYEdFH1URBVGYPZTQOr_1JNzrg/exec'; // ใช้ URL เดียวกับ app.js
 
         document.getElementById('btn-login').addEventListener('click', function() {
             const user = document.getElementById('loginUser').value.trim();
@@ -46,7 +46,10 @@
                 method: 'POST',
                 body: JSON.stringify({ requestType: 'login', username: user, password: pass })
             })
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + res.statusText);
+                return res.json();
+            })
             .then(data => {
                 if(data.status === 'success') {
                     localStorage.setItem('pdhtime_user', JSON.stringify(data.userData));
@@ -56,7 +59,8 @@
                     btn.disabled = false; btn.innerHTML = 'เข้าสู่ระบบ';
                 }
             }).catch(err => {
-                alert('การเชื่อมต่อล้มเหลว');
+                console.error('Login Error:', err);
+                alert('การเชื่อมต่อล้มเหลว: ' + err.message);
                 btn.disabled = false; btn.innerHTML = 'เข้าสู่ระบบ';
             });
         });
