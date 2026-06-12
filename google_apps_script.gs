@@ -46,10 +46,37 @@ function doPost(e) {
         data.name || '',
         data.position || '',
         data.department || '',
-        data.username || ''
+        data.username || '',
+        data.password || ''
       ]);
       Logger.log('Registered user: ' + data.idCard);
       return jsonResponse({ status: 'success', message: 'ลงทะเบียนเรียบร้อย' });
+    }
+
+    if (data.requestType === 'login') {
+      Logger.log('Processing login request');
+      var userValues = users.getDataRange().getValues();
+      // แถวที่ 1 คือ Header ให้เริ่มค้นหาตั้งแต่แถวที่ 2
+      for (var i = 1; i < userValues.length; i++) {
+        var row = userValues[i];
+        var sheetUser = String(row[5] || '').trim(); // Username อยู่คอลัมน์ F (index 5)
+        var sheetPass = String(row[6] || '').trim(); // Password อยู่คอลัมน์ G (index 6)
+        
+        if (sheetUser === String(data.username || '').trim() && sheetPass === String(data.password || '').trim()) {
+          return jsonResponse({
+            status: 'success',
+            message: 'เข้าสู่ระบบสำเร็จ',
+            userData: {
+              idCard: row[1],
+              name: row[2],
+              position: row[3],
+              department: row[4],
+              username: row[5]
+            }
+          });
+        }
+      }
+      return jsonResponse({ status: 'error', message: 'Username หรือรหัสผ่านไม่ถูกต้อง' });
     }
 
     if (data.requestType === 'checkin') {
