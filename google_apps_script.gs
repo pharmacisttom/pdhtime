@@ -120,10 +120,6 @@ function doPost(e) {
 function jsonResponse(obj) {
   var response = ContentService.createTextOutput(JSON.stringify(obj));
   response.setMimeType(ContentService.MimeType.JSON);
-  response.addHeader('Access-Control-Allow-Origin', '*');
-  response.addHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  response.addHeader('Access-Control-Allow-Headers', '*');
-  response.addHeader('Access-Control-Max-Age', '86400');
   return response;
 }
 
@@ -131,10 +127,6 @@ function jsonResponse(obj) {
 function doOptions(e) {
   var output = ContentService.createTextOutput('')
     .setMimeType(ContentService.MimeType.TEXT_PLAIN);
-  output.addHeader('Access-Control-Allow-Origin', '*');
-  output.addHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  output.addHeader('Access-Control-Allow-Headers', '*');
-  output.addHeader('Access-Control-Max-Age', '86400');
   return output;
 }
 
@@ -142,8 +134,5 @@ function doOptions(e) {
 function doGet(e) {
   var response = ContentService.createTextOutput(JSON.stringify({ status: 'ok', message: 'pdhtime Apps Script ready' }));
   response.setMimeType(ContentService.MimeType.JSON);
-  response.addHeader('Access-Control-Allow-Origin', '*');
-  response.addHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  response.addHeader('Access-Control-Allow-Headers', '*');
   return response;
 }
