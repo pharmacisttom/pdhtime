@@ -16,7 +16,7 @@ function logout() {
 }
 
 // --- 2. การตั้งค่าระบบ (แก้ URL และพิกัดตรงนี้) ---
-const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzvDiYvxRvS_TcFHm33EKfeqfKixH0QdsCXscML4JbXH9-k-y9q6ZlWiEyUilyPwyBaew/exec'; // << แก้ไขตรงนี้
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyxwG1-WHwGFNWC3sWia7GYSCgGC43hxDY_fFkWhNZtSYEdFH1URBVGYPZTQOr_1JNzrg/exec'; // << แก้ไขตรงนี้
 const HOSPITAL_LAT = 12.9699764; // พิกัด รพ.ปลวกแดง
 const HOSPITAL_LNG = 101.2189753;
 const MAX_DISTANCE = 50; // รัศมี 50 เมตร
